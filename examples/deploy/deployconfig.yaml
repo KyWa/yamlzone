@@ -1,0 +1,111 @@
+---
+kind: "Template"
+apiVersion: "v1"
+metadata:
+  name: "my-template"
+  annotations:
+objects:
+  - kind: "DeploymentConfig"
+    apiVersion: "v1"
+    metadata:
+      name: "my-dc"
+      labels:
+        app: "name"
+      namespace: "${NAMESPACE}"
+      annotations:
+    spec:
+      replicas: 1
+      strategy:
+        type: "Rolling"
+      template:
+        metadata:
+          labels:
+            app: "name"
+        spec:
+          containers:
+            - name: "my-container"
+              image: "${IMAGE_REGISTRY}:5000/${NAMESPACE}/repo-${SOURCE_REPO_REF}:latest"
+              imagePullPolicy: "IfNotPresent"
+              readinessProbe:
+                tcpSocket:
+                  port: 8080
+                initialDelaySeconds: 5
+                periodSeconds: 10
+              livenessProbe:
+                tcpSocket:
+                  port: 8080
+                initialDelaySeconds: 15
+                periodSeconds: 20
+              ports:
+                - containerPort: 8080
+                  protocol: "TCP"
+              resources:
+                limits:
+                  cpu: "500m"
+                  memory: "256Mi"
+                requests:
+                  cpu: "500m"
+                  memory: "256Mi"
+              securityContext:
+                priviledged: "false"
+          restartPolicy: "Always"
+          securityContext: {}
+          serviceAccountName: "${SERVICE_ACCOUNT}"
+      trigers:
+        - type: "ImageChange"
+  - kind: "Service"
+    apiVersion: "v1"
+    metadata:
+      name: "${SERVICE_NAME}"
+      namespace: "${NAMESPACE}"
+    spec:
+      ports:
+        - name: "http"
+          protocol: "TCP"
+          port: 80
+          targetPort: 8080
+      selector:
+        app: "name"
+  - kind: "Route"
+    apiVersion: route.openshift.io/v1
+    metadata:
+      name: "${SERVICE_NAME}"
+      namespace: "${NAMESPACE}"
+    spec:
+      port:
+        targetPort: http
+      to:
+        kind: Service
+        name: "${SERVICE_NAME}"
+        weight: 100
+        wildcardPolicy: None
+  - kind: "ServiceAccount"
+    apiVersion: "v1"
+    metadata:
+      name: "${SERVICE_ACCOUNT}"
+      namespace: "${NAMESPACE}"
+  - kind: "ClusterRoleBinding"
+    apiVersion: "v1"
+    metadata:
+      name: "name-sudoer"
+      namespace: "${NAMESPACE}"
+    roleRef:
+      name: "sudoer"
+    userNames:
+      - "system:serviceaccount:${NAMESPACE}:${SERVICE_ACCOUNT}"
+parameters:
+  - name: IMAGE_REGISTRY
+    description: "Git source repository uri to clone from."
+    required: true
+  - name: SOURCE_REPO_REF
+    description: "Git branch or commit reference to clone"
+    required: true
+  - name: NAMESPACE
+    description: "Cluster namespace to apply image stream to."
+    required: true
+  - name: SERVICE_ACCOUNT
+    description: "Service Account to run Koncierge as."
+    required: true
+  - name: SERVICE_NAME
+    description: "Cluster namespace to apply secret to."
+    required: true

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: NAME
+spec:
+  capacity:
+    storage: SIZE
+  accessModes:
+  - ReadWriteOnce 
+  nfs: 
+    path: /var/export/NAME
+    server: nfs.example.com
+  persistentVolumeReclaimPolicy: Recycle 
