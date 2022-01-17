@@ -4,6 +4,14 @@ metadata:
   name: code-server
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: code-server
+  namespace: code-server
+stringData:
+  password: CHANGEME
+---
+apiVersion: v1
 kind: Service
 metadata:
  name: code-server
@@ -14,6 +22,18 @@ spec:
    targetPort: 8080
  selector:
    app: code-server
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: code-server
+  namespace: code-server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -33,9 +53,38 @@ spec:
         app: code-server
     spec:
       containers:
-      - image: codercom/code-server:latest
+      - env:
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: code-server
+              key: password
+        image: codercom/code-server:latest
         imagePullPolicy: Always
         name: code-server
-        env:
-        - name: PASSWORD
-          value: "CHANGEME"
+        volumeMounts:
+        - mountPath: /home/coder
+          name: coder
+      volumes:
+      - name: coder
+        persistentVolumeClaim:
+          claimName: code-server
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: code-server
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: "kubernetes.example.com"
+    http:
+      paths:
+      - path: /codeserver
+        pathType: Prefix
+        backend:
+          service:
+            name: code-server
+            port:
+              number: 80
