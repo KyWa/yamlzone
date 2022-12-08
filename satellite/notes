@@ -1,0 +1,5 @@
+99-entitlement-key-pem.yaml # Entitlement key from Satellite
+99-entitlement-pem.yaml # Entitlement cert from Satellite
+99-katello-server-ca.yaml # CA from Satellite
+99-rhel-repo # Standard *.repo file for dnf/yum
+99-rhsm-conf.yaml # Customized RHSM configuration file for your environment
